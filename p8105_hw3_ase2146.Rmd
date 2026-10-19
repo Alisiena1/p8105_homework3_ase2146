@@ -4,31 +4,36 @@ author: "Ali Early"
 output: github_document
 ---
 
-# Problem 0
+## Problem 0
 As evidenced throughout this homework.
 
 
 
-# Problem 1 
+## Problem 1 
 ```{r}
-### Load data here
+#### Load data here and libraries
 library(tidyverse)
 library(p8105.datasets)
 data("ny_noaa")
 
-### Summary calculations
+
+#### Summary calculations and get data prepared
 n_obs = nrow(ny_noaa)
 n_cols = ncol(ny_noaa)
 n_stations = ny_noaa |> 
   pull(id) |> 
   n_distinct()
 
-### Compute percentages
+
+#### Consider percentages and counts to summarize
 total_record_count = nrow(ny_noaa)
 total_column_count = ncol(ny_noaa)
-total_distinct_stations = ny_noaa |> summarize(n = n_distinct(id)) |> pull(n)
+total_distinct_stations = ny_noaa |> 
+  summarize(n = n_distinct(id)) |> 
+  pull(n)
 
-# Missing data percentages
+
+#### Missing data percentages (`NA`)
 pct_missing_tmax = ny_noaa |> 
   summarize(pct = mean(is.na(tmax)) * 100) |> 
   pull(pct)
@@ -47,11 +52,12 @@ pct_missing_snwd = ny_noaa |>
 ```
 
 
-## Short description of the dataset
-The `ny_noaa` dataset has weather observations collected from New York weather stations between 1981 and 2010. There are `r nrow(ny_noaa)` observations (2,595,176) and `r ncol(ny_noaa)` variables included: station ID (`id`), observation date (`date`), precipitation (`prcp`, in tenths of mm), snowfall (`snow`, in mm), snow depth (`snwd`, in mm), and daily max and min temperatures (`tmax` and `tmin`, in tenths of degrees C). Missing data is an issue here because stations sometimes collected a subset of variables rather than all of the variables. For instance, `tmax` is missing in `r round(mean(is.na(ny_noaa$tmax)) * 100, 1)`% of observations and `tmin` is missing in `r round(mean(is.na(ny_noaa$tmin)) * 100, 1)`%.
+### Problem 1.1. Short description of the dataset
+The `ny_noaa` dataset has weather observations collected from New York State (NYS) weather stations between 1981 and 2010. There are 2,595,176 observations and `r ncol(ny_noaa)` variables included: station ID (`id`), observation date (`date`), precipitation (`prcp`, in tenths of mm), snowfall (`snow`, in mm), snow depth (`snwd`, in mm), and daily max and min temperatures (`tmax` and `tmin`, in tenths of degrees C). Missing data is an issue here because stations sometimes collected a subset of variables rather than all of the variables. For instance, `tmax` is missing in `r round(mean(is.na(ny_noaa$tmax)) * 100, 1)`% of observations and `tmin` is missing in `r round(mean(is.na(ny_noaa$tmin)) * 100, 1)`%.
+
 
 ```{r}
-### Clean variable names and convert units
+#### Clean variables and convert units for ease
 ny_noaa_clean = 
   ny_noaa |> 
   janitor::clean_names() |> 
@@ -63,7 +69,8 @@ ny_noaa_clean =
     prcp = prcp / 10
   )
 
-### Find top 10 common snowfall values
+
+#### Find 10 most common snowfall values across NYS 1981-2010
 common_snowfall_values = 
   ny_noaa_clean |> 
   janitor::tabyl(snow) |> 
@@ -71,5 +78,67 @@ common_snowfall_values =
   slice(1:10)
 ```
 
-## The why
-I cleaned the variable names using janitor::clean_names(), then separated the date variable into integer columns for year, month, and day. Maximum temp. (tmax), minimum temp. (tmin), and prec. (prcp) were divided by 10 to converted from tenths of units into Celsius (C) and millimeters (mm). Looking at the 10 most common snowfall values, 0 mm is by far the most frequent since it doesn't snow in NYS more than it is. Missing data (NA) is the second most common in the data, which makes sense because a lot of weather stations don't collect or report snowfall especially in the summer, for instance. After 0 and NA, smaller values like 3mm and 5mm in the top ten could be due to measurement differences across stations because some stations recording trace amounts or using direct measurements.
+
+### Problem 1.2. The why
+I cleaned the variable names using janitor::clean_names(), then separated the date variable into integer columns for year, month, and day. Maximum temp. (`tmax`), minimum temp. (`tmin`), and prec. (`prcp`) were divided by 10 to converted from tenths of units into Celsius (C) and millimeters (mm). Looking at the 10 most common snowfall values, `0mm` is by far the most frequent since it doesn't snow in NYS more than it is. Missing data, `NA`, is the second most common in the data, which makes sense because a lot of weather stations don't collect or report snowfall especially in the summer, for instance. After `0` and `NA`, smaller values like 3mm and 5mm in the top ten could be due to measurement differences across stations because some stations recording trace amounts or using direct measurements.
+
+
+```{r}
+#### Calculate the average tmax in January and in July per station and year
+jan_jul_df = 
+  ny_noaa_clean |> 
+  filter(month == 1 | month == 7) |> 
+  group_by(id, year, month) |> 
+  summarize(mean_tmax = mean(tmax, na.rm = TRUE))
+
+
+#### Plot January-July snowfall in NYS
+ggplot(jan_jul_df, aes(x = year, y = mean_tmax, group = id)) + 
+  geom_line(alpha = 0.5) + 
+  facet_wrap(~ month) +
+  labs(
+    title = "Average Max. Temp. in January and July in NYS from 1981 and 2010",
+    x = "Year",
+    y = "Average Max Temperature (C)"
+  )
+```
+
+### Problem 1.3 Patterns and outliers
+These two figures show a clear pattern that max. temps are consistently lower in January and much higher in July. There are a few noticeable outliers across the years, such as an unusually cold January ~1998 where temperatures dropped below the other years and a cold July ~1987. There also seemed to be a very warm July in 2010. While some outliers could be due to localized weather events, measurement errors at stations or between workers, and broader climate patterns (e.g., climate change) highlight the variability in NYS temperatures across time.
+
+
+```{r}
+#### tmax vs tmin plot using ggplot
+ny_noaa_clean |> 
+  ggplot(aes(x = tmin, y = tmax)) +
+  geom_bin_2d(bins = 50) +
+  scale_fill_distiller(palette = "Spectral") +
+  labs(
+    title = "Daily Minimum and Maximum Temperatures in NYS (1981-2010)",
+    x = "Minimum Temperature (C)",
+    y = "Maximum Temperature (C)",
+    fill = "Year"
+  ) +
+  scale_fill_viridis_c(option = "K") +
+  theme(legend.position = "bottom")
+```
+
+
+```{r}
+# Distribution of snowfall  by year
+ny_noaa_clean |> 
+  filter(snow > 0 & snow < 100) |> 
+  ggplot(aes(x = factor(year), y = snow, fill = year)) +
+  geom_boxplot(outlier.shape = NA) +
+  scale_fill_viridis_c(option = "K") +
+  labs(
+    title = "Distribution of Snowfall (0-100 mm) in NYS, 1981-2010",
+    x = "Year",
+    y = "Snowfall (mm)"
+  ) +
+  theme_classic() +
+  theme(
+    axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
+    legend.position = "bottom"
+  )
+```
