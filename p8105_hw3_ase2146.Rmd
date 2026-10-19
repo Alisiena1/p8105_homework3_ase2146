@@ -292,3 +292,42 @@ nhanes_time_course |>
 
 ### Problem 2.3: Explanation/comment
 The plots show patterns in physical activity (or MIMS) across education levels and sex. Across all groups, activity follows circadian rhythm cycles, dropping to zero or very little between midnight and 6 AM to reflect sleep windows. Females demonstrate slightly higher mean activity levels than males across all educational levels. Additionally, individuals with less than a high school education exhibit higher overall peak activity during midday compared to those with high school equivalents or post-secondary education.
+
+
+
+## Problem 3
+```{r}
+#### Read all 4 CSV files
+file_paths <- list.files(pattern = "\\.csv$", ignore.case = TRUE, full.names = TRUE)
+
+#### Import and clean data
+citibike_df <- read_csv(file_paths, id = "file_name") |> 
+  clean_names() |> 
+  mutate(
+    month = if_else(str_detect(file_name, "(?i)jan"), "Jan", "Jul"),
+    month = factor(month, levels = c("Jan", "Jul")),
+
+#### Order by year
+    year = if_else(str_detect(file_name, "2020"), "2020", "2024"),
+    year = factor(year),
+
+#### Order by day
+    day_of_week = factor(
+      weekdays, 
+      levels = c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
+    ),
+    rideable_type = factor(
+      rideable_type, 
+      levels = c("classic_bike", "electric_bike"),
+      labels = c("Classic Bike", "Electric Bike")
+    ),
+    member_casual = factor(
+      member_casual, 
+      levels = c("casual", "member"),
+      labels = c("Casual", "Member")
+    )
+  ) |> 
+  select(-file_name)
+```
+
+### Problem 3.1: 
