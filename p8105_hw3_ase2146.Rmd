@@ -382,7 +382,7 @@ median_duration_df <-
   group_by(year, month, day_of_week) |> 
   summarize(median_duration = median(duration, na.rm = TRUE), .groups = "drop")
 
-# 2. Create multi-panel line plot for easy comparison across all 3 variables
+##### Create multi-panel line plot for easy comparison across all 3 variables
 ggplot(median_duration_df, aes(x = day_of_week, y = median_duration, group = month, color = month)) +
   geom_line(linewidth = 1.1) +
   geom_point(size = 3) +
