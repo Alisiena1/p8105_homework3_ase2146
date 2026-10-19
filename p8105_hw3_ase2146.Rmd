@@ -56,6 +56,7 @@ pct_missing_snwd = ny_noaa |>
 The `ny_noaa` dataset has weather observations collected from New York State (NYS) weather stations between 1981 and 2010. There are 2,595,176 observations and `r ncol(ny_noaa)` variables included: station ID (`id`), observation date (`date`), precipitation (`prcp`, in tenths of mm), snowfall (`snow`, in mm), snow depth (`snwd`, in mm), and daily max and min temperatures (`tmax` and `tmin`, in tenths of degrees C). Missing data is an issue here because stations sometimes collected a subset of variables rather than all of the variables. For instance, `tmax` is missing in `r round(mean(is.na(ny_noaa$tmax)) * 100, 1)`% of observations and `tmin` is missing in `r round(mean(is.na(ny_noaa$tmin)) * 100, 1)`%.
 
 
+
 ```{r}
 #### Clean variables and convert units for ease
 ny_noaa_clean = 
@@ -81,6 +82,7 @@ common_snowfall_values =
 
 ### Problem 1.2: The why?
 I cleaned the variable names using janitor::clean_names(), then separated the date variable into integer columns for year, month, and day. Maximum temp. (`tmax`), minimum temp. (`tmin`), and prec. (`prcp`) were divided by 10 to converted from tenths of units into Celsius (C) and millimeters (mm). Looking at the 10 most common snowfall values, `0mm` is by far the most frequent since it doesn't snow in NYS more than it is. Missing data, `NA`, is the second most common in the data, which makes sense because a lot of weather stations don't collect or report snowfall especially in the summer, for instance. After `0` and `NA`, smaller values like 3mm and 5mm in the top ten could be due to measurement differences across stations because some stations recording trace amounts or using direct measurements.
+
 
 
 ```{r}
@@ -252,7 +254,7 @@ Total daily physical activity generally declines as age increases across three l
 
 
 ```{r}
-# Pivot MIMS and convert units
+#### Pivot MIMS and convert units
 nhanes_time_course = 
   nhanes_df |> 
   pivot_longer(
@@ -297,6 +299,7 @@ The plots show patterns in physical activity (or MIMS) across education levels a
 
 ## Problem 3
 ```{r}
+library(janitor)
 #### Read all 4 CSV files
 file_paths <- 
   list.files(pattern = "\\.csv$", ignore.case = TRUE, full.names = TRUE)
@@ -329,8 +332,8 @@ citibike_df <- read_csv(file_paths, id = "file_name") |>
   ) |> 
   select(-file_name)
 
-
-ride_summary
+#### See the tibble!
+citibike_df
 
 ```
 
@@ -366,17 +369,18 @@ top_5_start_stations_jul_2024 <-
     `Number of Rides` = number_of_rides
   )
 
+#### See the tibble!
 top_5_start_stations_jul_2024
 ```
 
-#### Problem 3.3: Effects of timing on median ride duration
+### Problem 3.3: Effects of timing on median ride duration
 ```{r}
 #### Calculate median duration by year, month, and day of week
 median_duration_df <- citibike_df |> 
   group_by(year, month, day_of_week) |> 
   summarize(median_duration = median(duration, na.rm = TRUE), .groups = "drop")
 
-##### Create plot across all variables
+#### Create plot across all variables
 ggplot(median_duration_df, 
        aes(x = day_of_week, y = median_duration, group = month, color = month)) +
   geom_line(linewidth = 1.0) +
@@ -409,17 +413,21 @@ The figure shows seasonal and temporal changes in median rides. Citi bike users 
 summary_2024 <- citibike_df |> 
   filter(year == "2024") |> 
   group_by(month, member_casual, rideable_type) |> 
-  summarize(median_duration = median(duration, na.rm = TRUE), .groups = "drop")
+  summarize(median_duration = 
+              median(duration, na.rm = TRUE), .groups = "drop")
 
 #### Create plot using this 2024 data only
-ggplot(summary_2024, aes(x = member_casual, y = median_duration, fill = rideable_type)) +
+ggplot(summary_2024, 
+       aes(x = member_casual, 
+           y = median_duration, fill = rideable_type)) +
   geom_col(position = "dodge", alpha = 0.85, width = 0.6) +
   facet_wrap(~ month) +
   scale_fill_manual(
-    values = c("Classic Bike" = "#1f77b6", "Electric Bike" = "#aec7f9")
+    values = 
+      c("Classic Bike" = "#1f77b6", "Electric Bike" = "#aec7f9")
   ) +
   labs(
-    title = "Median Ride Duration by Membership, Bike Type, and Month, 2024",
+    title = "Median Ride Duration by Membership, Bike Type, & Month, 2024",
     x = "Membership Type",
     y = "Median Ride Duration (Mins)",
     fill = "Bike Type"
@@ -431,3 +439,6 @@ ggplot(summary_2024, aes(x = member_casual, y = median_duration, fill = rideable
     legend.position = "right"
   )
 ```
+
+### Problem 3.4: Description of the figure
+Across 2024, ride amounts and durations increased from January to July for both members and casual users. Warmer summer weather plays a part in longer, more frequent rides. However, this growth could also be attributed to better bike availability, especially electric bikes, making it much easier for people to pick up a bike and ride whenever they needed to.
