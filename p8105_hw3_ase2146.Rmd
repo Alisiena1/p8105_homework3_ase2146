@@ -52,7 +52,7 @@ pct_missing_snwd = ny_noaa |>
 ```
 
 
-### Problem 1.1. Short description of the dataset
+### Problem 1.1: Short description of the dataset
 The `ny_noaa` dataset has weather observations collected from New York State (NYS) weather stations between 1981 and 2010. There are 2,595,176 observations and `r ncol(ny_noaa)` variables included: station ID (`id`), observation date (`date`), precipitation (`prcp`, in tenths of mm), snowfall (`snow`, in mm), snow depth (`snwd`, in mm), and daily max and min temperatures (`tmax` and `tmin`, in tenths of degrees C). Missing data is an issue here because stations sometimes collected a subset of variables rather than all of the variables. For instance, `tmax` is missing in `r round(mean(is.na(ny_noaa$tmax)) * 100, 1)`% of observations and `tmin` is missing in `r round(mean(is.na(ny_noaa$tmin)) * 100, 1)`%.
 
 
@@ -79,7 +79,7 @@ common_snowfall_values =
 ```
 
 
-### Problem 1.2. The why
+### Problem 1.2: The why?
 I cleaned the variable names using janitor::clean_names(), then separated the date variable into integer columns for year, month, and day. Maximum temp. (`tmax`), minimum temp. (`tmin`), and prec. (`prcp`) were divided by 10 to converted from tenths of units into Celsius (C) and millimeters (mm). Looking at the 10 most common snowfall values, `0mm` is by far the most frequent since it doesn't snow in NYS more than it is. Missing data, `NA`, is the second most common in the data, which makes sense because a lot of weather stations don't collect or report snowfall especially in the summer, for instance. After `0` and `NA`, smaller values like 3mm and 5mm in the top ten could be due to measurement differences across stations because some stations recording trace amounts or using direct measurements.
 
 
@@ -103,7 +103,7 @@ ggplot(jan_jul_df, aes(x = year, y = mean_tmax, group = id)) +
   )
 ```
 
-### Problem 1.3 Patterns and outliers
+### Problem 1.3: Patterns and outliers
 These two figures show a clear pattern that max. temps are consistently lower in January and much higher in July. There are a few noticeable outliers across the years, such as an unusually cold January ~1998 where temperatures dropped below the other years and a cold July ~1987. There also seemed to be a very warm July in 2010. While some outliers could be due to localized weather events, measurement errors at stations or between workers, and broader climate patterns (e.g., climate change) highlight the variability in NYS temperatures across time.
 
 
@@ -112,33 +112,183 @@ These two figures show a clear pattern that max. temps are consistently lower in
 ny_noaa_clean |> 
   ggplot(aes(x = tmin, y = tmax)) +
   geom_bin_2d(bins = 50) +
-  scale_fill_distiller(palette = "Spectral") +
+    scale_fill_viridis_c(option = "K") +
   labs(
     title = "Daily Minimum and Maximum Temperatures in NYS (1981-2010)",
     x = "Minimum Temperature (C)",
     y = "Maximum Temperature (C)",
-    fill = "Year"
+    fill = "Count"
   ) +
-  scale_fill_viridis_c(option = "K") +
-  theme(legend.position = "bottom")
+  theme_classic() +
+  theme(
+    axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
+    legend.position = "none",
+    legend.key.width = unit(1.5, "cm"),
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 14)
+  )
 ```
 
 
 ```{r}
-# Distribution of snowfall  by year
+#### Distribution of snowfall  by year
 ny_noaa_clean |> 
   filter(snow > 0 & snow < 100) |> 
-  ggplot(aes(x = factor(year), y = snow, fill = year)) +
+  ggplot(aes(x = factor(year), y = snow, fill = as.numeric(year))) +
   geom_boxplot(outlier.shape = NA) +
   scale_fill_viridis_c(option = "K") +
   labs(
     title = "Distribution of Snowfall (0-100 mm) in NYS, 1981-2010",
     x = "Year",
-    y = "Snowfall (mm)"
+    y = "Snowfall (mm)",
+    fill = "Year"
   ) +
   theme_classic() +
   theme(
     axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
-    legend.position = "bottom"
+    legend.position = "bottom",
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 14)
   )
 ```
+
+
+## Problem 2
+```{r}
+#### Load demographic data
+covar_df = 
+  read_csv("https://p8105.com/data/nhanes_covar.csv", 
+           skip = 4) |> 
+  janitor::clean_names() |> 
+  filter(age >= 21) |> 
+  drop_na(sex, age, bmi, education) |> 
+  mutate(
+    sex = factor(
+      sex, 
+      levels = c(1, 2), 
+      labels = c("Male", "Female")
+    ),
+    education = factor(
+      education, 
+      levels = c(1, 2, 3), 
+      labels = c("Less than high school", 
+                 "High school equivalent", 
+                 "More than high school"),
+      ordered = TRUE
+    )
+  )
+
+
+#### Load accelerometer data next
+accel_df = 
+  read_csv("https://p8105.com/data/nhanes_accel.csv") |> 
+  janitor::clean_names()
+
+
+#### Merge these datasets!
+nhanes_df = 
+  inner_join(covar_df, accel_df, by = "seqn")
+```
+
+
+```{r}
+#### Ages for men-women (sex) across educational attainment in NHANES
+nhanes_df |> 
+  ggplot(aes(x = sex, y = age, fill = sex)) +
+  geom_boxplot(alpha = 0.6, outlier.shape = NA) +
+  geom_jitter(width = 0.15, alpha = 0.3) +
+  facet_wrap(~ education) +
+  scale_fill_manual(
+    values = c("Male" = "#2B5C9D", "Female" = "#E86A8A")
+  ) +
+  labs(
+    title = "Age Distribution by Sex Across Levels of Education Among NHANES Participants",
+    x = "Sex",
+    y = "Age",
+    fill = "Sex"
+  ) +
+theme_classic() +
+  theme(
+    legend.position = "bottom",
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 14)
+  )
+```
+
+
+### Problem 2.1: Explanation/comment
+Across education levels, overall sample sizes remain highest in the "More than high school" category. But participant counts are roughly equal between men and women. The plot shows demographic trends also: participants in the "More than high school" category skew younger overall, whereas those in the "Less than high school" category skew older. Sex differences in age distribution are most pronounced in the "High school equivalent" category, where female participants are noticeably older on average compared to male participants, who skew younger.
+
+
+```{r}
+#### Aggregate MIMS to calculate total daily activity
+nhanes_total_act = 
+  nhanes_df |> 
+  mutate(total_activity = rowSums(across(starts_with("min"))))
+
+
+#### Plot activity against age by sex x education levels
+nhanes_total_act |> 
+  ggplot(aes(x = age, y = total_activity, color = sex)) +
+  geom_point(alpha = 0.5) +
+  geom_smooth(se = FALSE) +
+  facet_wrap(~ education) +
+  scale_color_manual(
+    values = c("Male" = "#2B5C9D", "Female" = "#E86A8A")
+  ) +
+  labs(
+    title = "Total Daily Activity vs. Age by Sex Across Educational Attainment Among NHANES Participants",
+    x = "Age (Years)",
+    y = "Total Daily Activity (MIMS)",
+    color = "Sex"
+  ) +
+  theme_classic() +
+  theme(
+    legend.position = "bottom",
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 12)
+  )
+```
+
+### Problem 2.2: Explanation/comment
+Total daily physical activity generally declines as age increases across three levels of educational attainment. Also generally speaking, female participants exhibit greater average total activity levels compared to male participants, a difference that is most noticeable in the "High school equivalent" and "More than high school" tiers across middle age. 
+
+
+
+```{r}
+# Pivot MIMS and convert units
+nhanes_time_course = 
+  nhanes_df |> 
+  pivot_longer(
+    cols = starts_with("min"),
+    names_to = "minute",
+    names_prefix = "min",
+    values_to = "mims"
+  ) |> 
+  mutate(minute = as.numeric(minute))
+
+
+#### Plot showing 24-hour activity time by education level x sex
+nhanes_time_course |> 
+  ggplot(aes(x = minute / 60, y = mims, color = sex)) +
+  geom_smooth(se = FALSE, linewidth = 1) +
+  facet_wrap(~ education) +
+  scale_color_manual(values = c("Male" = "#2B5C9D", "Female" = "#E86A8A")) +
+  scale_x_continuous(
+    breaks = c(0, 6, 12, 18, 24),
+    labels = c("12 AM", "6 AM", "12 PM", "6 PM", "12 AM"),
+    limits = c(0, 24),
+    expand = c(0, 0.5)
+  ) +
+  labs(
+    title = "24-Hour Activity Level by Education and Sex",
+    x = "Time of Day",
+    y = "Activity (MIMS)",
+    color = "Sex"
+  ) +
+  theme_classic() +
+  theme(
+    legend.position = "bottom",
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 14)
+  )
+```
+
+
+### Problem 2.3: Explanation/comment
+The plots show patterns in physical activity (or MIMS) across education levels and sex. Across all groups, activity follows circadian rhythm cycles, dropping to zero or very little between midnight and 6 AM to reflect sleep windows. Females demonstrate slightly higher mean activity levels than males across all educational levels. Additionally, individuals with less than a high school education exhibit higher overall peak activity during midday compared to those with high school equivalents or post-secondary education.
