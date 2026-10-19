@@ -4,9 +4,72 @@ author: "Ali Early"
 output: github_document
 ---
 
-## Problem 0
+# Problem 0
 As evidenced throughout this homework.
 
 
 
-## Problem 1 
+# Problem 1 
+```{r}
+### Load data here
+library(tidyverse)
+library(p8105.datasets)
+data("ny_noaa")
+
+### Summary calculations
+n_obs = nrow(ny_noaa)
+n_cols = ncol(ny_noaa)
+n_stations = ny_noaa |> 
+  pull(id) |> 
+  n_distinct()
+
+### Compute percentages
+total_record_count = nrow(ny_noaa)
+total_column_count = ncol(ny_noaa)
+total_distinct_stations = ny_noaa |> summarize(n = n_distinct(id)) |> pull(n)
+
+# Missing data percentages
+pct_missing_tmax = ny_noaa |> 
+  summarize(pct = mean(is.na(tmax)) * 100) |> 
+  pull(pct)
+pct_missing_tmin = ny_noaa |> 
+  summarize(pct = mean(is.na(tmin)) * 100) |> 
+  pull(pct)
+pct_missing_prcp = ny_noaa |> 
+  summarize(pct = mean(is.na(prcp)) * 100) |> 
+  pull(pct)
+pct_missing_snow = ny_noaa |> 
+  summarize(pct = mean(is.na(snow)) * 100) |> 
+  pull(pct)
+pct_missing_snwd = ny_noaa |> 
+  summarize(pct = mean(is.na(snwd)) * 100) |> 
+  pull(pct)
+```
+
+
+## Short description of the dataset
+The `ny_noaa` dataset has weather observations collected from New York weather stations between 1981 and 2010. There are `r nrow(ny_noaa)` observations (2,595,176) and `r ncol(ny_noaa)` variables included: station ID (`id`), observation date (`date`), precipitation (`prcp`, in tenths of mm), snowfall (`snow`, in mm), snow depth (`snwd`, in mm), and daily max and min temperatures (`tmax` and `tmin`, in tenths of degrees C). Missing data is an issue here because stations sometimes collected a subset of variables rather than all of the variables. For instance, `tmax` is missing in `r round(mean(is.na(ny_noaa$tmax)) * 100, 1)`% of observations and `tmin` is missing in `r round(mean(is.na(ny_noaa$tmin)) * 100, 1)`%.
+
+```{r}
+### Clean variable names and convert units
+ny_noaa_clean = 
+  ny_noaa |> 
+  janitor::clean_names() |> 
+  separate(date, into = c("year", "month", "day"), 
+           sep = "-", convert = TRUE) |> 
+  mutate(
+    tmax = as.numeric(tmax) / 10,
+    tmin = as.numeric(tmin) / 10,
+    prcp = prcp / 10
+  )
+
+### Find top 10 common snowfall values
+common_snowfall_values = 
+  ny_noaa_clean |> 
+  janitor::tabyl(snow) |> 
+  arrange(desc(n)) |> 
+  slice(1:10)
+```
+
+## The why
+I cleaned the variable names using janitor::clean_names(), then separated the date variable into integer columns for year, month, and day. Maximum temp. (tmax), minimum temp. (tmin), and prec. (prcp) were divided by 10 to converted from tenths of units into Celsius (C) and millimeters (mm). Looking at the 10 most common snowfall values, 0 mm is by far the most frequent since it doesn't snow in NYS more than it is. Missing data (NA) is the second most common in the data, which makes sense because a lot of weather stations don't collect or report snowfall especially in the summer, for instance. After 0 and NA, smaller values like 3mm and 5mm in the top ten could be due to measurement differences across stations because some stations recording trace amounts or using direct measurements.
