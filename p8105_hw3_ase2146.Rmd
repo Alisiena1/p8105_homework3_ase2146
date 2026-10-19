@@ -122,7 +122,7 @@ ny_noaa_clean |>
   theme_classic() +
   theme(
     axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
-    legend.position = "none",
+    legend.position = "bottom",
     legend.key.width = unit(1.5, "cm"),
     plot.title = element_text(hjust = 0.5, face = "bold", size = 14)
   )
@@ -200,7 +200,7 @@ nhanes_df |>
     values = c("Male" = "#2B5C9D", "Female" = "#E86A8A")
   ) +
   labs(
-    title = "Age Distribution by Sex Across Levels of Education Among NHANES Participants",
+    title = "Age Distribution by Sex Across Levels of Education",
     x = "Sex",
     y = "Age",
     fill = "Sex"
@@ -234,7 +234,7 @@ nhanes_total_act |>
     values = c("Male" = "#2B5C9D", "Female" = "#E86A8A")
   ) +
   labs(
-    title = "Total Daily Activity vs. Age by Sex Across Educational Attainment Among NHANES Participants",
+    title = "Total Daily Activity vs. Age by Sex Across Educational Attainment",
     x = "Age (Years)",
     y = "Total Daily Activity (MIMS)",
     color = "Sex"
@@ -277,7 +277,7 @@ nhanes_time_course |>
     expand = c(0, 0.5)
   ) +
   labs(
-    title = "24-Hour Activity Level by Education and Sex",
+    title = "Activity Level by Education and Sex (24 Hours)",
     x = "Time of Day",
     y = "Activity (MIMS)",
     color = "Sex"
@@ -305,16 +305,14 @@ file_paths <-
 citibike_df <- read_csv(file_paths, id = "file_name") |> 
   clean_names() |> 
   mutate(
-    ###### Include months
-    month = if_else(str_detect(file_name, "(?i)jan"), "January", "July"),
-    month = factor(month, levels = c("January", "July")),
+    month = if_else(str_detect(file_name, "(?i)jan"), "Jan", "Jul"),
+    month = factor(month, levels = c("Jan", "Jul")),
 
-    ##### Include year
     year = if_else(str_detect(file_name, "2020"), "2020", "2024"),
     year = factor(year),
-
-    ##### Include days
-    weekdays = factor(
+    
+    ##### Creates the new days column
+    day_of_week = factor(
       weekdays, 
       levels = c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
     ),
@@ -340,8 +338,9 @@ ride_summary
 This df merges Citi Bike data from four time periods: January 2020, July 2020, January 2024, and July 2024. The df contains 99,485 bike rides across 10 columns, including the trip identifiers, trip duration, starting and ending station names, and other details like the day of the week, month, and year.
 
 
+
 ```{r}
-# Creating table
+#### Creating table
 ride_summary <- citibike_df |> 
   group_by(year, month, member_casual) |> 
   summarize(total_rides = n(), .groups = "drop") |> 
@@ -354,7 +353,7 @@ ride_summary <- citibike_df |>
 
 
 
-### Problem 3.2: July 2024 data
+### Problem 3.2: July 2024 table
 ```{r}
 #### Create July 2024 table with top stations
 top_5_start_stations_jul_2024 <- 
@@ -373,30 +372,32 @@ top_5_start_stations_jul_2024
 #### Problem 3.3: Effects of timing on median ride duration
 ```{r}
 #### Calculate median duration by year, month, and day of week
-weekdays = factor(
-  weekdays, 
-  levels = c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
-)
-median_duration_df <- 
-  citibike_df |> 
+median_duration_df <- citibike_df |> 
   group_by(year, month, day_of_week) |> 
   summarize(median_duration = median(duration, na.rm = TRUE), .groups = "drop")
 
-##### Create multi-panel line plot for easy comparison across all 3 variables
-ggplot(median_duration_df, aes(x = day_of_week, y = median_duration, group = month, color = month)) +
-  geom_line(linewidth = 1.1) +
-  geom_point(size = 3) +
+##### Create plot across all variables
+ggplot(median_duration_df, 
+       aes(x = day_of_week, y = median_duration, group = month, color = month)) +
+  geom_line(linewidth = 1.0) +
+  geom_point(size = 2.0) +
   facet_wrap(~ year) +
+  scale_color_manual(
+    values = c("Jan" = "#1f77b6", "Jul" = "#aec7f9")
+  ) +
   labs(
-    title = "Median Ride Duration by Day of Week, Month, and Year",
-    x = "Day of the Week",
-    y = "Median Duration (Minutes)",
+    title = "Median Citi Bike Ride by Day of Week, Month, and Year",
+    x = "Days",
+    y = "Median Bike Ride (Mins)",
     color = "Month"
   ) +
   theme_minimal() +
   theme(
     axis.text.x = element_text(angle = 45, hjust = 1),
-    legend.position = "bottom",
-    plot.title = element_text(face = "bold", size = 14)
+    legend.position = "right",
+    plot.title = element_text(face = "bold", size = 14),
+    strip.text = element_text(face = "bold", size = 12) 
   )
 ```
+
+
