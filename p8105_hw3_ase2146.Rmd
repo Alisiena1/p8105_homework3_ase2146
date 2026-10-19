@@ -400,4 +400,34 @@ ggplot(median_duration_df,
   )
 ```
 
+### Problem 3.3: Description of the figure
+The figure shows seasonal and temporal changes in median rides. Citi bike users consistently ride for shorter durations in January compared to July across both years, which is likely driven by colder weather conditions. July exhibits longer median ridess, supported by generally more favorable weather conditions. Notably, median ride durations were highest in July 2020. This  increase is could be attributable to the COVID-19 pandemic. Biking for some is a way to cope with social isolation and restricted indoor activities.
 
+
+```{r}
+#### Filter dataset for 2024 data only
+summary_2024 <- citibike_df |> 
+  filter(year == "2024") |> 
+  group_by(month, member_casual, rideable_type) |> 
+  summarize(median_duration = median(duration, na.rm = TRUE), .groups = "drop")
+
+#### Create plot using this 2024 data only
+ggplot(summary_2024, aes(x = member_casual, y = median_duration, fill = rideable_type)) +
+  geom_col(position = "dodge", alpha = 0.85, width = 0.6) +
+  facet_wrap(~ month) +
+  scale_fill_manual(
+    values = c("Classic Bike" = "#1f77b6", "Electric Bike" = "#aec7f9")
+  ) +
+  labs(
+    title = "Median Ride Duration by Membership, Bike Type, and Month, 2024",
+    x = "Membership Type",
+    y = "Median Ride Duration (Mins)",
+    fill = "Bike Type"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold", size = 12),
+    strip.text = element_text(face = "bold", size = 11),
+    legend.position = "right"
+  )
+```
