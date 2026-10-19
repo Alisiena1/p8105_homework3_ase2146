@@ -298,21 +298,23 @@ The plots show patterns in physical activity (or MIMS) across education levels a
 ## Problem 3
 ```{r}
 #### Read all 4 CSV files
-file_paths <- list.files(pattern = "\\.csv$", ignore.case = TRUE, full.names = TRUE)
+file_paths <- 
+  list.files(pattern = "\\.csv$", ignore.case = TRUE, full.names = TRUE)
 
 #### Import and clean data
 citibike_df <- read_csv(file_paths, id = "file_name") |> 
   clean_names() |> 
   mutate(
-    month = if_else(str_detect(file_name, "(?i)jan"), "Jan", "Jul"),
-    month = factor(month, levels = c("Jan", "Jul")),
+    ###### Include months
+    month = if_else(str_detect(file_name, "(?i)jan"), "January", "July"),
+    month = factor(month, levels = c("January", "July")),
 
-#### Order by year
+    ##### Include year
     year = if_else(str_detect(file_name, "2020"), "2020", "2024"),
     year = factor(year),
 
-#### Order by day
-    day_of_week = factor(
+    ##### Include days
+    weekdays = factor(
       weekdays, 
       levels = c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
     ),
@@ -328,6 +330,73 @@ citibike_df <- read_csv(file_paths, id = "file_name") |>
     )
   ) |> 
   select(-file_name)
+
+
+ride_summary
+
 ```
 
-### Problem 3.1: 
+### Problem 3.1: Description of data
+This df merges Citi Bike data from four time periods: January 2020, July 2020, January 2024, and July 2024. The df contains 99,485 bike rides across 10 columns, including the trip identifiers, trip duration, starting and ending station names, and other details like the day of the week, month, and year.
+
+
+```{r}
+# Creating table
+ride_summary <- citibike_df |> 
+  group_by(year, month, member_casual) |> 
+  summarize(total_rides = n(), .groups = "drop") |> 
+  pivot_wider(
+    names_from = member_casual,
+    values_from = total_rides
+  ) |> 
+  mutate(Total = Casual + Member)
+```
+
+
+
+### Problem 3.2: July 2024 data
+```{r}
+#### Create July 2024 table with top stations
+top_5_start_stations_jul_2024 <- 
+  citibike_df |> 
+  filter(year == "2024", month %in% c("Jul", "July")) |> 
+  count(start_station_name, name = "number_of_rides", sort = TRUE) |> 
+  slice_head(n = 5) |> 
+  rename(
+    `Starting Station` = start_station_name,
+    `Number of Rides` = number_of_rides
+  )
+
+top_5_start_stations_jul_2024
+```
+
+#### Problem 3.3: Effects of timing on median ride duration
+```{r}
+#### Calculate median duration by year, month, and day of week
+weekdays = factor(
+  weekdays, 
+  levels = c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
+)
+median_duration_df <- 
+  citibike_df |> 
+  group_by(year, month, day_of_week) |> 
+  summarize(median_duration = median(duration, na.rm = TRUE), .groups = "drop")
+
+# 2. Create multi-panel line plot for easy comparison across all 3 variables
+ggplot(median_duration_df, aes(x = day_of_week, y = median_duration, group = month, color = month)) +
+  geom_line(linewidth = 1.1) +
+  geom_point(size = 3) +
+  facet_wrap(~ year) +
+  labs(
+    title = "Median Ride Duration by Day of Week, Month, and Year",
+    x = "Day of the Week",
+    y = "Median Duration (Minutes)",
+    color = "Month"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "bottom",
+    plot.title = element_text(face = "bold", size = 14)
+  )
+```
